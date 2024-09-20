@@ -1,16 +1,24 @@
 package com.nahid.espcontrol;
 
 
+import android.annotation.SuppressLint;
+import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.Dialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
+import android.view.Window;
+import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -37,13 +45,14 @@ public class MainActivity extends AppCompatActivity {
 
 
     private static final int LOCATION_PERMISSION_REQUEST_CODE = 1;
-    CardView contron_btn;
-    ImageView icon;
+    ImageView btn;
     TextView status_tv;
     int STATUS = 0;
+    RelativeLayout progress_layout,main_layout;
 
 
 
+    @SuppressLint("MissingInflatedId")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -59,23 +68,24 @@ public class MainActivity extends AppCompatActivity {
 
         wedstatus("http://192.168.4.1/status");
 
-        icon = findViewById(R.id.btn_image);
-        contron_btn = findViewById(R.id.control_button);
+        btn = findViewById(R.id.btn_image);
         status_tv = findViewById(R.id.status_tv);
+        progress_layout = findViewById(R.id.progress_layout);
+        main_layout = findViewById(R.id.main_layout);
 
 
 
-        contron_btn.setOnClickListener(new View.OnClickListener() {
+        btn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 if (STATUS == 1) {
                     STATUS = 0;
-                    icon.setImageResource(R.drawable.ic_off);
+                    btn.setImageResource(R.drawable.ic_off);
                     status_tv.setText("Status: OFF");
                     webaction("http://192.168.4.1/off");
                 } else {
                     STATUS = 1;
-                    icon.setImageResource(R.drawable.ic_on);
+                    btn.setImageResource(R.drawable.ic_on);
                     status_tv.setText("Status: ON");
                     webaction("http://192.168.4.1/on");
                 }
@@ -95,40 +105,26 @@ public class MainActivity extends AppCompatActivity {
                             String status = response.getString("status");
                             if (status.equals("ON")) {
                                 STATUS = 1;
-                                icon.setImageResource(R.drawable.ic_on);
+                                btn.setImageResource(R.drawable.ic_on);
                                 status_tv.setText("Status: ON");
                             } else {
                                 STATUS = 0;
-                                icon.setImageResource(R.drawable.ic_off);
+                                btn.setImageResource(R.drawable.ic_off);
                                 status_tv.setText("Status: OFF");
                             }
                         } catch (JSONException e) {
                             e.printStackTrace();
 
-
                         }
+
+                        progress_layout.setVisibility(View.GONE);
+                        main_layout.setVisibility(View.VISIBLE);
                     }
                 }, new Response.ErrorListener() {
                     @Override
                     public void onErrorResponse(VolleyError error) {
                         //statusTextView.setText("Error: " + error.getMessage());
-                        new AlertDialog.Builder(MainActivity.this)
-                                .setTitle("Wifi Not Connect")
-                                .setCancelable(false)
-                                .setMessage("Connect 'Espap' wifi then refrash or you can exit this app ")
-                                .setPositiveButton("Exit", new DialogInterface.OnClickListener() {
-                                    public void onClick(DialogInterface dialog, int which) {
-                                        finish();
-                                    }
-                                }).setNeutralButton("Refrash", new DialogInterface.OnClickListener() {
-                                    @Override
-                                    public void onClick(DialogInterface dialogInterface, int i) {
-                                        wedstatus("http://192.168.4.1/status");
-                                    }
-                                })
-                                // A null listener allows the button to dismiss the dialog and take no further action.
-                                .setIcon(R.drawable.wifi_disconnect)
-                                .show();
+                        showDialog(MainActivity.this);
 
                     }
                 });
@@ -146,35 +142,43 @@ public class MainActivity extends AppCompatActivity {
                 new Response.Listener<String>() {
                     @Override
                     public void onResponse(String response) {
-
+                        progress_layout.setVisibility(View.GONE);
+                        main_layout.setVisibility(View.VISIBLE);
                     }
                 }, new Response.ErrorListener() {
             @Override
             public void onErrorResponse(VolleyError error) {
 
-                new AlertDialog.Builder(MainActivity.this)
-                        .setTitle("Wifi Not Connect")
-                        .setCancelable(false)
-                        .setMessage("Connect 'Espap' wifi then refrash or you can exit this app ")
-                        .setPositiveButton("Exit", new DialogInterface.OnClickListener() {
-                            public void onClick(DialogInterface dialog, int which) {
-                                finish();
-                            }
-                        }).setNeutralButton("Refrash", new DialogInterface.OnClickListener() {
-                            @Override
-                            public void onClick(DialogInterface dialogInterface, int i) {
-                                wedstatus("http://192.168.4.1/status");
-                            }
-                        })
-                        // A null listener allows the button to dismiss the dialog and take no further action.
-                        .setIcon(R.drawable.wifi_disconnect)
-                        .show();
+                showDialog(MainActivity.this);
 
             }
         });
 
 // Add the request to the RequestQueue.
         queue.add(stringRequest);
+    }
+
+
+    public void showDialog(Activity activity){
+        final Dialog dialog = new Dialog(activity);
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        dialog.setCancelable(false);
+        dialog.setContentView(R.layout.network_dialog);
+        dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        dialog.show();
+
+        Button refash = dialog.findViewById(R.id.refash_btn);
+        Button exit = dialog.findViewById(R.id.exit_btn);
+
+        refash.setOnClickListener(view -> {
+            main_layout.setVisibility(View.GONE);
+            progress_layout.setVisibility(View.VISIBLE);
+            wedstatus("http://192.168.4.1/status");
+            dialog.dismiss();
+        });
+
+        exit.setOnClickListener(view -> finish());
+
     }
 
 }
